@@ -20,6 +20,7 @@ import numpy as np
 
 from pupil_tracking.utils.types import (
     CalibrationInfo,
+    EllipseParams,
     EyeDetectionResult,
     LimbusDetection,
 )
@@ -522,6 +523,66 @@ class StabilizedCalibrator:
         self._ema_variance = 0.0
         self._history.clear()
         self._frozen = False
+
+
+def ellipse_major_diameter_px(ellipse: Optional[EllipseParams]) -> float:
+    """Return the full major-axis diameter in pixels.
+
+    The limbus and corneal diameter should be derived from the ellipse's major axis,
+    not the mean radius, because the detected contour can be elliptical.
+    """
+    if ellipse is None:
+        return 0.0
+
+    semi_major = float(getattr(ellipse, "semi_major", 0.0) or 0.0)
+    if semi_major > 0.0:
+        return semi_major * 2.0
+
+    radius = float(getattr(ellipse, "radius", 0.0) or 0.0)
+    return radius * 2.0 if radius > 0.0 else 0.0
+
+
+def ellipse_major_diameter_mm(ellipse: Optional[EllipseParams], mm_per_px: float) -> float:
+    """Return the full major-axis diameter converted to mm."""
+    if mm_per_px <= 0.0:
+        return 0.0
+    return ellipse_major_diameter_px(ellipse) * float(mm_per_px)
+
+
+def correct_pre_docked_limbus_ellipse(
+    ellipse: Optional[EllipseParams],
+    lower_quadrant_pct: float = 0.015,
+) -> Optional[EllipseParams]:
+    """Apply a conservative correction for the lower-left limbus underfit.
+
+    Pre-docked limbus fits can be slightly too small in the 180°–270° sector.
+    This inflates only that sector by a small amount, without changing the rest of
+    the ellipse geometry or any docked logic.
+    """
+    if ellipse is None:
+        return None
+
+    gain = max(0.0, float(lower_quadrant_pct))
+    if gain <= 0.0:
+        return ellipse
+
+    corrected = EllipseParams(
+        center_x=ellipse.center_x,
+        center_y=ellipse.center_y,
+        semi_major=ellipse.semi_major * (1.0 + 0.35 * gain),
+        semi_minor=ellipse.semi_minor * (1.0 + gain),
+        angle_deg=ellipse.angle_deg,
+        uncertainty_center_x=ellipse.uncertainty_center_x,
+        uncertainty_center_y=ellipse.uncertainty_center_y,
+        uncertainty_semi_major=ellipse.uncertainty_semi_major,
+        uncertainty_semi_minor=ellipse.uncertainty_semi_minor,
+        fit_quality=ellipse.fit_quality,
+        fit_rms_residual=ellipse.fit_rms_residual,
+        num_contour_points=ellipse.num_contour_points,
+        eccentricity=ellipse.eccentricity,
+        circularity=ellipse.circularity,
+    )
+    return corrected
 
 
 def calculate_ruler_scale(

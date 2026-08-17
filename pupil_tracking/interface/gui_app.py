@@ -4036,17 +4036,16 @@ class PupilTrackingGUI:
         }
         if fr.pupil_center is not None and fr.pupil_axes is not None:
             semi_a, semi_b = max(fr.pupil_axes) / 2.0, min(fr.pupil_axes) / 2.0
-            # Mean radius — matches EllipseParams.radius and the Measurements
-            # panel (which shows diameter = e.radius * 2). Using the mean (not
-            # semi-major) is what makes the exported mm value vary per frame
-            # instead of collapsing to the calibration constant.
-            mean_r = (semi_a + semi_b) / 2.0
+            # Use the full major-axis diameter for exported diameters. The
+            # radius-only convention is wrong for elliptical fits and leads to
+            # inconsistent mm values when exported to CSV.
             mm = cal.mm_per_px if cal.calibrated else 0.0
+            major_diameter_px = semi_a * 2.0
             d["pupil"] = {
                 "detected": True,
                 "confidence": fr.confidence,
                 "fit_type": getattr(fr, "pupil_fit_type", None),
-                "radius_mm": (mean_r * mm) if cal.calibrated else None,
+                "radius_mm": (semi_a * mm) if cal.calibrated else None,
                 "center_mm": (
                     (fr.pupil_center[0] * mm, fr.pupil_center[1] * mm)
                     if cal.calibrated else None
@@ -4054,11 +4053,11 @@ class PupilTrackingGUI:
                 "ellipse": {
                     "center_x": fr.pupil_center[0],
                     "center_y": fr.pupil_center[1],
-                    "radius": mean_r,
+                    "radius": semi_a,
                     "semi_major": semi_a,
                     "semi_minor": semi_b,
                     "angle_deg": float(getattr(fr, "pupil_angle", 0.0) or 0.0),
-                    "diameter_mm": (mean_r * 2.0 * mm) if cal.calibrated else None,
+                    "diameter_mm": (major_diameter_px * mm) if cal.calibrated else None,
                     "semi_major_mm": (semi_a * mm) if cal.calibrated else None,
                     "semi_minor_mm": (semi_b * mm) if cal.calibrated else None,
                 },
@@ -4067,11 +4066,11 @@ class PupilTrackingGUI:
             d["pupil"] = {"detected": False, "ellipse": {}}
         if fr.limbus_center is not None and fr.limbus_axes is not None:
             semi_a, semi_b = max(fr.limbus_axes) / 2.0, min(fr.limbus_axes) / 2.0
-            mean_r = (semi_a + semi_b) / 2.0
             mm = cal.mm_per_px if cal.calibrated else 0.0
+            major_diameter_px = semi_a * 2.0
             wtw_h = (2.0 * semi_a * mm) if cal.calibrated else None
             wtw_v = (2.0 * semi_b * mm) if cal.calibrated else None
-            wtw_m = (mean_r * 2.0 * mm) if cal.calibrated else None
+            wtw_m = (major_diameter_px * mm) if cal.calibrated else None
             wtw_astig = (abs(wtw_h - wtw_v)) if (wtw_h is not None and wtw_v is not None) else None
             is_wtw_m = bool(cal.calibrated and getattr(cal, "method", "anatomical") != "anatomical")
             if not cal.calibrated:
@@ -4085,7 +4084,7 @@ class PupilTrackingGUI:
                 "detected": True,
                 "confidence": min(0.95, fr.confidence + 0.05),
                 "fit_type": getattr(fr, "limbus_fit_type", None),
-                "radius_mm": (mean_r * mm) if cal.calibrated else None,
+                "radius_mm": (semi_a * mm) if cal.calibrated else None,
                 "center_mm": (
                     (fr.limbus_center[0] * mm, fr.limbus_center[1] * mm)
                     if cal.calibrated else None
@@ -4099,11 +4098,11 @@ class PupilTrackingGUI:
                 "ellipse": {
                     "center_x": fr.limbus_center[0],
                     "center_y": fr.limbus_center[1],
-                    "radius": mean_r,
+                    "radius": semi_a,
                     "semi_major": semi_a,
                     "semi_minor": semi_b,
                     "angle_deg": float(getattr(fr, "limbus_angle", 0.0) or 0.0),
-                    "diameter_mm": (mean_r * 2.0 * mm) if cal.calibrated else None,
+                    "diameter_mm": (major_diameter_px * mm) if cal.calibrated else None,
                     "semi_major_mm": (semi_a * mm) if cal.calibrated else None,
                     "semi_minor_mm": (semi_b * mm) if cal.calibrated else None,
                 },

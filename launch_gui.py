@@ -1388,10 +1388,10 @@ def _export_results_csv(results: List[Dict[str, Any]], csv_path: str) -> None:
         cal_info = r.get("calibration", {})
         mm_px = cal_info.get("mm_per_px", 0)
 
-        pupil_dia_px = pe.get("radius", 0) * 2 if pe.get("radius") else ""
-        limbus_dia_px = le.get("radius", 0) * 2 if le.get("radius") else ""
-        pupil_dia_mm = pupil_dia_px * mm_px if pupil_dia_px and mm_px else ""
-        limbus_dia_mm = limbus_dia_px * mm_px if limbus_dia_px and mm_px else ""
+        pupil_dia_px = float(pe.get("semi_major", pe.get("radius", 0))) * 2.0 if pe.get("semi_major") is not None or pe.get("radius") else ""
+        limbus_dia_px = float(le.get("semi_major", le.get("radius", 0))) * 2.0 if le.get("semi_major") is not None or le.get("radius") else ""
+        pupil_dia_mm = pupil_dia_px * mm_px if isinstance(pupil_dia_px, (int, float)) and mm_px else ""
+        limbus_dia_mm = limbus_dia_px * mm_px if isinstance(limbus_dia_px, (int, float)) and mm_px else ""
         # compute deltas vs previous frame (px)
         pupil_delta = ""
         limbus_delta = ""

@@ -1503,6 +1503,10 @@ class UnifiedDetector:
                 or force_limbus_overwrite
                 or new_conf >= result.limbus.confidence
             ):
+                if not is_docked and limbus_fit is not None:
+                    from pupil_tracking.calibration.spatial_calibration import correct_pre_docked_limbus_ellipse
+                    ep = correct_pre_docked_limbus_ellipse(ep, lower_quadrant_pct=0.015)
+
                 result.limbus.detected = True
                 result.limbus.ellipse = ep
                 result.limbus.confidence = new_conf

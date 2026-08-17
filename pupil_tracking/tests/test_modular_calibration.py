@@ -7,6 +7,9 @@ from types import SimpleNamespace
 from pupil_tracking.calibration.spatial_calibration import (
     SpatialCalibrator,
     StabilizedCalibrator,
+    ellipse_major_diameter_px,
+    ellipse_major_diameter_mm,
+    correct_pre_docked_limbus_ellipse,
 )
 from pupil_tracking.utils.config import CalibrationConfig, MeasurementStabilizationConfig
 from pupil_tracking.utils.types import (
@@ -152,6 +155,16 @@ def test_calculate_ruler_scale():
     px_per_mm, mm_per_px = calculate_ruler_scale(p1, p2, known_dist_mm)
     assert pytest.approx(px_per_mm) == 20.0
     assert pytest.approx(mm_per_px) == 0.05
+
+
+def test_ellipse_major_diameter_uses_full_axis_and_lower_arc_fix():
+    ellipse = EllipseParams(center_x=300, center_y=300, semi_major=120.0, semi_minor=80.0, angle_deg=90.0)
+    assert pytest.approx(ellipse_major_diameter_px(ellipse)) == 240.0
+    assert pytest.approx(ellipse_major_diameter_mm(ellipse, 0.05)) == 12.0
+
+    corrected = correct_pre_docked_limbus_ellipse(ellipse, lower_quadrant_pct=0.5)
+    assert corrected.semi_major > ellipse.semi_major
+    assert corrected.semi_minor >= ellipse.semi_minor
 
 
 def test_evaluate_clinical_wtw_fixed_scale():
